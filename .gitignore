@@ -1,0 +1,40 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Node (ACP-adapter, eventuella verktyg)
+node_modules/
+npm-debug.log*
+
+# IntelliJ IDEA – delade inställningar (codeStyles, palantir-java-format) versioneras
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/dataSources.local.xml
+.idea/usage.statistics.xml
+*.iml
+*.iws
+out/
+
+# VS Code
+.vscode/
+
+# Claude Code – lokala inställningar
+.claude/settings.local.json
+.claude/.cc-writes/
+
+# Hemligheter och lokal konfiguration
+.env
+.env.*
+application-local.yml
+application-local.properties
+
+# Loggar
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
