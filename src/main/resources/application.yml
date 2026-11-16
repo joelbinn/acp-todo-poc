@@ -1,0 +1,38 @@
+server:
+  port: 8080
+  address: 127.0.0.1          # POC:n lyssnar bara lokalt (NFR-1)
+
+spring:
+  threads.virtual.enabled: true
+  ai.mcp.server:
+    name: poc-tools
+    version: 0.1.0
+    type: SYNC
+    protocol: STREAMABLE
+
+poc:
+  agent:
+    command: claude-agent-acp   # alt: npx, args: ["-y", "@agentclientprotocol/claude-agent-acp"]
+    args: []
+    env:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:}   # tom = inloggad Claude Code-prenumeration
+    tools:                      # allt agenten får använda (FR-14)
+      - mcp__poc-tools__*
+      - TodoWrite
+    pre-approved-tools:         # inga Permission-förfrågningar (FR-15)
+      - mcp__poc-tools__list_tasks
+      - mcp__poc-tools__create_task
+      - mcp__poc-tools__complete_task
+      - TodoWrite
+    workspace-root: ${java.io.tmpdir}/acp-poc
+    permission-timeout: 120s   # uteblivet svar räknas som avböjt (FR-5)
+    max-sessions: 3            # samtidiga Chattar; fler får error (FR-9)
+    shutdown-grace: 5s         # agentprocess som lever efter detta dödas (FR-9)
+  web:
+    allowed-origins: http://localhost:8080,http://127.0.0.1:8080   # NFR-1
+  mcp:
+    public-url: http://127.0.0.1:${server.port}/mcp
+    dev-token: ${POC_MCP_DEV_TOKEN:}   # tom = utvecklartoken avstängd (NFR-4)
+
+logging.level:
+  se.joelabs.acppoc: DEBUG

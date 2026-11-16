@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ACP Todo POC</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <h1>ACP Todo POC</h1>
+    <span id="status" class="status" data-state="connecting">Ansluter…</span>
+  </header>
+  <div class="layout">
+    <main>
+      <section id="messages" aria-live="polite"></section>
+      <form id="composer" autocomplete="off">
+        <textarea id="input" rows="2" placeholder="Skriv ett meddelande…" disabled></textarea>
+        <button id="send" type="submit" disabled>Skicka</button>
+        <button id="stop" type="button" disabled>Stopp</button>
+      </form>
+    </main>
+    <aside id="task-panel" aria-label="Uppgifter">
+      <h2>Uppgifter</h2>
+      <p id="tasks-empty" class="empty">Inga uppgifter ännu.</p>
+      <ul id="tasks"></ul>
+    </aside>
+  </div>
+  <dialog id="permission" aria-labelledby="permission-title">
+    <form method="dialog" id="permission-form">
+      <h2 id="permission-title">Agenten ber om tillåtelse</h2>
+      <p id="permission-text"></p>
+      <pre id="permission-details" hidden></pre>
+      <div id="permission-options" class="options"></div>
+    </form>
+  </dialog>
+  <script src="app.js"></script>
+</body>
+</html>

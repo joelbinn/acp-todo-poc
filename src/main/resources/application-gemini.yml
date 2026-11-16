@@ -1,0 +1,12 @@
+# Profil för Gemini CLI som agent (FR-12): start med --spring.profiles.active=gemini.
+# Kräver Gemini CLI >= 0.68 (--acp; --experimental-acp är deprecated) och GEMINI_API_KEY eller inloggad Gemini CLI.
+poc:
+  agent:
+    command: gemini
+    args:
+      - --acp
+    env:
+      ANTHROPIC_API_KEY: ""              # används inte av Gemini
+      GEMINI_API_KEY: ${GEMINI_API_KEY:}   # tom = inloggad Gemini CLI
+    # OBS, känd lucka (ADR-0005): Gemini ignorerar _meta.claudeCode, så `tools` och `pre-approved-tools` har
+    # ingen effekt. Gemini kan använda egna fil- och skaltools, och dess egna godkännanden gäller.

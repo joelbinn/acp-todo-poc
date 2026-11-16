@@ -1,0 +1,3 @@
+#!/bin/sh
+# Kör Checkstyle (importordning, oanvända importer, komplexitet <= 10) innan varje commit.
+exec ./mvnw -o -q checkstyle:check@checkstyle

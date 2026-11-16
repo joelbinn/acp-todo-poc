@@ -1,0 +1,8 @@
+<configuration>
+    <!-- Fake-agentens stdout är ACP-kanalen (JSON-RPC): loggar måste gå till stderr. -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder><pattern>[fake-agent] %d{HH:mm:ss.SSS} %-5level %logger{20} - %msg%n</pattern></encoder>
+    </appender>
+    <root level="WARN"><appender-ref ref="STDERR"/></root>
+</configuration>
