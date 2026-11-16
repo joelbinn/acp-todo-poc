@@ -28,7 +28,9 @@ Appen startar en egen agentprocess per Chatt. Agentprocessen ärver bara `PATH`,
 Appen lyssnar på `127.0.0.1:8080`. MCP-servern ligger på `/mcp` (Streamable HTTP) och kräver `Authorization: Bearer <token>`.
 För MCP Inspector, starta med `POC_MCP_DEV_TOKEN=<valfritt-hemligt-värde>`. Utan variabeln finns ingen utvecklartoken.
 
-Tools: `list_tasks` (valfritt `status`-filter), `create_task`, `complete_task` och `delete_task` (destruktivt, ger alltid en Permission-förfrågan).
+Tools: `list_tasks` (valfritt `status`-filter), `create_task`, `rename_task`, `complete_task` och `delete_task` (destruktivt, ger alltid en Permission-förfrågan).
+
+Uppgiftspanelen är också redigerbar direkt (skapa, byta titel, slutföra, ta bort) via REST under `/api/tasks`. Anropen kräver `Origin` från `poc.web.allowed-origins` och `Content-Type: application/json`.
 
 ## Demo
 

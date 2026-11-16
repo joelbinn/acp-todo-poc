@@ -58,7 +58,7 @@ class McpEndpointIT {
     void should_list_create_and_list_tools_when_client_has_valid_token() {
         var token = tokens.issue("chat-1");
         try (var client = client(token)) {
-            assertThat(client.listTools().tools()).extracting(Tool::name).contains("create_task", "list_tasks");
+            assertThat(client.listTools().tools()).extracting(Tool::name).contains("create_task", "list_tasks", "rename_task");
         }
     }
 

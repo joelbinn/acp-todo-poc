@@ -17,6 +17,7 @@ import se.joelabs.acppoc.task.domain.TaskCompleted;
 import se.joelabs.acppoc.task.domain.TaskCreated;
 import se.joelabs.acppoc.task.domain.TaskDeleted;
 import se.joelabs.acppoc.task.domain.TaskNotFoundException;
+import se.joelabs.acppoc.task.domain.TaskRenamed;
 import se.joelabs.acppoc.task.domain.TaskStatus;
 
 /** Seam: TaskService mot riktigt in-memory-repo och en inspelande publisher-port (DR-1, DR-2, DR-6). */
@@ -147,6 +148,65 @@ class TaskServiceTest {
                 .hasMessageContaining("42");
 
         assertThat(publisher.events).isEmpty();
+    }
+
+    @Test
+    void should_rename_task_and_publish_task_renamed_when_title_changes() {
+        var created = service.create("köpa mjölk");
+        publisher.events.clear();
+
+        var renamed = service.rename(created.id(), "  köpa havremjölk ");
+
+        assertThat(renamed.title()).isEqualTo("köpa havremjölk");
+        assertThat(service.list(null)).extracting(TaskDto::title).containsExactly("köpa havremjölk");
+        assertThat(publisher.events).singleElement().isInstanceOf(TaskRenamed.class);
+        var event = (TaskRenamed) publisher.events.getFirst();
+        assertThat(event.previousTitle()).isEqualTo("köpa mjölk");
+        assertThat(event.title()).isEqualTo("köpa havremjölk");
+        assertThat(event.status()).isEqualTo(TaskStatus.OPEN);
+    }
+
+    @Test
+    void should_rename_completed_task_and_keep_status_when_renaming() {
+        var created = service.create("a");
+        service.complete(created.id());
+        publisher.events.clear();
+
+        var renamed = service.rename(created.id(), "b");
+
+        assertThat(renamed.status()).isEqualTo(TaskStatus.DONE);
+        assertThat(publisher.events).singleElement().isInstanceOf(TaskRenamed.class);
+    }
+
+    @Test
+    void should_succeed_without_event_when_title_unchanged_after_trim() {
+        var created = service.create("a");
+        publisher.events.clear();
+
+        var same = service.rename(created.id(), "  a ");
+
+        assertThat(same.title()).isEqualTo("a");
+        assertThat(publisher.events).isEmpty();
+    }
+
+    @Test
+    void should_reject_rename_and_publish_nothing_when_title_invalid() {
+        var created = service.create("a");
+        publisher.events.clear();
+
+        assertThatThrownBy(() -> service.rename(created.id(), "  ")).isInstanceOf(InvalidTaskException.class);
+        assertThatThrownBy(() -> service.rename(created.id(), "a".repeat(201)))
+                .isInstanceOf(InvalidTaskException.class);
+
+        assertThat(service.list(null)).extracting(TaskDto::title).containsExactly("a");
+        assertThat(publisher.events).isEmpty();
+    }
+
+    @Test
+    void should_fail_readably_when_renaming_unknown_id() {
+        assertThatThrownBy(() -> service.rename(42, "x"))
+                .isInstanceOf(TaskNotFoundException.class)
+                .hasMessageContaining("42");
     }
 
     @Test

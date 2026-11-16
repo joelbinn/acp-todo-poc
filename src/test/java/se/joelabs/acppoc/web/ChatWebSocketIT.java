@@ -137,15 +137,16 @@ class ChatWebSocketIT {
             });
 
             var created = tasks.create("live");
+            tasks.rename(created.id(), "live 2");
             tasks.complete(created.id());
             tasks.delete(created.id());
 
             for (var received : List.of(first, second)) {
-                await().untilAsserted(() -> assertThat(payloads(received, "task_changed")).hasSize(3));
+                await().untilAsserted(() -> assertThat(payloads(received, "task_changed")).hasSize(4));
                 var changes = payloads(received, "task_changed").stream()
                         .map(m -> json.readTree(m).get("change").asString()).toList();
-                assertThat(changes).containsExactly("CREATED", "UPDATED", "DELETED");
-                var done = json.readTree(payloads(received, "task_changed").get(1)).get("task");
+                assertThat(changes).containsExactly("CREATED", "UPDATED", "UPDATED", "DELETED");
+                var done = json.readTree(payloads(received, "task_changed").get(2)).get("task");
                 assertThat(done.get("status").asString()).isEqualTo("DONE");
                 assertThat(done.get("id").asLong()).isEqualTo(created.id());
             }

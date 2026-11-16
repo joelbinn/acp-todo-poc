@@ -59,14 +59,93 @@
     list.replaceChildren(...entries.map((e) => { const li = el('li', null, e.content); li.dataset.status = e.status; return li; }));
   }
 
-  // Uppgiftspanelen: öppna överst, sedan slutförda, båda i id-ordning. Uppdateras bara från händelser.
+  // Uppgiftspanelen: öppna överst, sedan slutförda, båda i id-ordning. Raderna uppdateras bara från händelser
+  // (FR-16). Ändringar från panelen går via REST och kommer tillbaka som samma händelser som från agenten.
   const taskList = $('tasks'), tasksEmpty = $('tasks-empty');
   const tasks = new Map(); // id -> { task, row }
+
+  // Enda ingången till REST. Kastar Error med serverns läsbara felmeddelande.
+  async function api(method, path, body) {
+    const res = await fetch(path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (res.ok) return res.status === 204 ? null : res.json();
+    const detail = await res.json().catch(() => null);
+    throw new Error((detail && detail.error) || 'Något gick fel (' + res.status + ').');
+  }
+  function showRowError(row, message) {
+    const e = row.querySelector('.row-error');
+    e.textContent = message || '';
+    e.hidden = !message;
+  }
+  async function act(row, request) {
+    showRowError(row, '');
+    try { return await request(); } catch (err) { showRowError(row, err.message); return undefined; }
+  }
+
+  function startEdit(row, id) {
+    if (row.editing || row.classList.contains('removed')) return;
+    const entry = tasks.get(id);
+    if (!entry) return;
+    row.editing = true;
+    const field = el('input', 'title-edit');
+    field.type = 'text'; field.maxLength = 200; field.value = entry.task.title;
+    field.setAttribute('aria-label', 'Ny titel');
+    let finished = false;
+    const finish = () => { finished = true; row.editing = false; endEdit(row, id); };
+    const commit = async () => {
+      if (finished) return;
+      const title = field.value.trim();
+      if (!title || title === entry.task.title) return finish();
+      finished = true; // blur efter Enter får inte spara en andra gång
+      showRowError(row, '');
+      try { await api('PATCH', '/api/tasks/' + id, { title }); finish(); }
+      catch (err) { finished = false; showRowError(row, err.message); }
+    };
+    field.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(); showRowError(row, ''); }
+    });
+    field.addEventListener('blur', commit);
+    row.querySelector('.title').replaceWith(field);
+    field.focus(); field.select();
+  }
+  // Redigeringsläget stängs. Titeln tas från senaste kända tillstånd, som händelser kan ha ändrat under tiden.
+  function endEdit(row, id) {
+    const entry = tasks.get(id);
+    const field = row.querySelector('.title-edit');
+    if (field) field.replaceWith(titleSpan(row, id, entry ? entry.task.title : ''));
+  }
+  function titleSpan(row, id, text) {
+    const span = el('span', 'title', text);
+    span.addEventListener('dblclick', () => startEdit(row, id));
+    return span;
+  }
   function taskRow(task) {
     const li = el('li');
-    li.append(el('span', 'title', task.title));
-    li.dataset.status = task.status;
+    const check = el('input', 'done-box');
+    check.type = 'checkbox';
+    check.setAttribute('aria-label', 'Slutför ' + task.title);
+    check.addEventListener('change', () => act(li, () => api('POST', '/api/tasks/' + task.id + '/complete'))
+      .then(() => { const e = tasks.get(task.id); check.checked = !!e && e.task.status === 'DONE'; }));
+    const edit = el('button', 'icon', '✎');
+    edit.type = 'button'; edit.title = 'Byt titel'; edit.setAttribute('aria-label', 'Byt titel på ' + task.title);
+    edit.addEventListener('click', () => startEdit(li, task.id));
+    const del = el('button', 'icon danger', '✕');
+    del.type = 'button'; del.title = 'Ta bort'; del.setAttribute('aria-label', 'Ta bort ' + task.title);
+    del.addEventListener('click', () => act(li, () => api('DELETE', '/api/tasks/' + task.id)));
+    li.append(check, titleSpan(li, task.id, task.title), edit, del, el('p', 'row-error'));
+    li.querySelector('.row-error').hidden = true;
+    syncRow(li, task);
     return li;
+  }
+  function syncRow(row, task) {
+    row.dataset.status = task.status;
+    const check = row.querySelector('.done-box');
+    check.checked = task.status === 'DONE';
+    check.disabled = task.status === 'DONE'; // en slutförd Uppgift kan inte öppnas igen (DR-4)
   }
   function sortTaskRows() {
     const rank = (t) => (t.status === 'OPEN' ? 0 : 1);
@@ -80,7 +159,14 @@
     row.classList.add('highlight');
     setTimeout(() => row.classList.remove('highlight'), HIGHLIGHT_MS);
   }
+  // En rad som redigeras behåller sitt inmatningsfält: en händelse får aldrig skriva över det användaren skriver (FR-19).
   function upsertTask(task) {
+    const existing = tasks.get(task.id);
+    if (existing && existing.row.editing) {
+      existing.task = task;
+      syncRow(existing.row, task);
+      return existing.row;
+    }
     const row = taskRow(task);
     tasks.set(task.id, { task, row });
     return row;
@@ -89,10 +175,22 @@
     const entry = tasks.get(task.id);
     if (!entry) return;
     tasks.delete(task.id);
+    entry.row.editing = false;
+    entry.row.replaceChildren(el('span', 'title', task.title));
     entry.row.classList.add('removed');
     sortTaskRows();
     setTimeout(() => { entry.row.remove(); sortTaskRows(); }, REMOVED_MS);
   }
+
+  const newTask = $('new-task'), newTitle = $('new-title'), newError = $('new-error');
+  newTask.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = newTitle.value.trim();
+    if (!title) return;
+    newError.hidden = true;
+    try { await api('POST', '/api/tasks', { title }); newTitle.value = ''; }
+    catch (err) { newError.textContent = err.message; newError.hidden = false; }
+  });
 
   // Permission-dialog: en knapp per alternativ. Flera förfrågningar köas och visas en i taget.
   // Esc eller stängd dialog räknas som avböjt.

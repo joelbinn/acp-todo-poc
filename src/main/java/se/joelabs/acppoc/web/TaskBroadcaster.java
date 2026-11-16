@@ -12,6 +12,7 @@ import se.joelabs.acppoc.task.domain.TaskChanged;
 import se.joelabs.acppoc.task.domain.TaskCompleted;
 import se.joelabs.acppoc.task.domain.TaskCreated;
 import se.joelabs.acppoc.task.domain.TaskDeleted;
+import se.joelabs.acppoc.task.domain.TaskRenamed;
 
 /**
  * Observer (GoF): lyssnar på {@link TaskChanged} och skickar {@code task_changed} till alla öppna flikar, oavsett
@@ -45,6 +46,7 @@ class TaskBroadcaster {
     private static UiEvent.Change changeOf(TaskChanged event) {
         return switch (event) {
             case TaskCreated created -> UiEvent.Change.CREATED;
+            case TaskRenamed renamed -> UiEvent.Change.UPDATED;
             case TaskCompleted completed -> UiEvent.Change.UPDATED;
             case TaskDeleted deleted -> UiEvent.Change.DELETED;
         };

@@ -22,6 +22,11 @@
     </main>
     <aside id="task-panel" aria-label="Uppgifter">
       <h2>Uppgifter</h2>
+      <form id="new-task" autocomplete="off">
+        <input id="new-title" type="text" maxlength="200" placeholder="Ny uppgift…" aria-label="Ny uppgift">
+        <button type="submit">Lägg till</button>
+      </form>
+      <p id="new-error" class="row-error" role="alert" hidden></p>
       <p id="tasks-empty" class="empty">Inga uppgifter ännu.</p>
       <ul id="tasks"></ul>
     </aside>

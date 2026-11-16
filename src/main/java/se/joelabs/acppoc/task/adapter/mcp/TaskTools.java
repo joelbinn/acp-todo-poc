@@ -38,6 +38,16 @@ class TaskTools {
     }
 
     @McpTool(
+            name = "rename_task",
+            description = "Byter titel på en uppgift i användarens uppgiftslista och returnerar den uppdaterade "
+                    + "uppgiften. Fungerar även för slutförda uppgifter. Ger fel om id saknas eller titeln är ogiltig.")
+    TaskDto renameTask(
+            @McpToolParam(description = "Uppgiftens id") long id,
+            @McpToolParam(description = "Ny rubrik, 1–200 tecken") String title) {
+        return callLog.timed("rename_task", () -> tasks.rename(id, title));
+    }
+
+    @McpTool(
             name = "complete_task",
             description = "Slutför en uppgift i användarens uppgiftslista och returnerar den uppdaterade uppgiften. "
                     + "Att slutföra en redan slutförd uppgift är ofarligt. Ger fel om id saknas.")

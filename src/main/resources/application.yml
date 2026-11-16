@@ -22,6 +22,7 @@ poc:
     pre-approved-tools:         # inga Permission-förfrågningar (FR-15)
       - mcp__poc-tools__list_tasks
       - mcp__poc-tools__create_task
+      - mcp__poc-tools__rename_task
       - mcp__poc-tools__complete_task
       - TodoWrite
     workspace-root: ${java.io.tmpdir}/acp-poc

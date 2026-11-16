@@ -34,6 +34,7 @@ En utvecklare som kör appen på sin egen maskin och har antingen en inloggad Cl
 3. **Godkänna en destruktiv åtgärd.** Användaren ber agenten ta bort uppgifter. En dialog visar agentens alternativ, och användaren godkänner eller avböjer.
 4. **Avbryta.** Användaren trycker Stopp under en pågående **Tur**. Turen avslutas med stoppskälet `cancelled`.
 5. **Se ändringar från andra.** En annan flik eller MCP Inspector ändrar Uppgiftslistan. Panelen uppdateras direkt i alla öppna flikar.
+6. **Redigera direkt i panelen.** Användaren skapar, byter titel på, slutför och tar bort Uppgifter med vanliga kontroller (inmatningsfält, checkbox, knappar). Ändringen syns i alla öppna flikar och för agenten.
 
 ## Funktionella krav
 
@@ -53,7 +54,11 @@ En utvecklare som kör appen på sin egen maskin och har antingen en inloggad Cl
 | FR-12 | Agentkommando, argument, miljövariabler och **förgodkända tools** konfigureras i `application.yml`. Agenten byts genom en Spring-profil. |
 | FR-13 | Uppgiftspanelen visar alla Uppgifter. Ändringar, från vilken MCP-klient som helst, når alla öppna flikar direkt utan omladdning. |
 | FR-14 | Med Claude Code som agent kan agenten bara använda POC:ns Tools och sitt plan-tool (`TodoWrite`), inga fil-, skal- eller webbtools. |
-| FR-15 | `list_tasks`, `create_task` och `complete_task` är förgodkända. `delete_task` ger alltid en Permission-förfrågan. |
+| FR-15 | `list_tasks`, `create_task`, `rename_task` och `complete_task` är förgodkända. `delete_task` ger alltid en Permission-förfrågan. |
+| FR-16 | Uppgiftspanelen är redigerbar. Användaren kan skapa en Uppgift (inmatningsfält, Enter), byta titel (penn-knapp eller dubbelklick; Enter och förlorad fokus sparar, Esc avbryter, oförändrad eller tom titel avbryter tyst), slutföra (checkbox, låst för slutförda) och ta bort (knapp, direkt utan dialog). Panelen uppdateras bara från Uppgiftshändelser (FR-13), aldrig optimistiskt. |
+| FR-17 | Panelen anropar REST: `POST /api/tasks`, `PATCH /api/tasks/{id}` (titel), `POST /api/tasks/{id}/complete` och `DELETE /api/tasks/{id}`. Alla går via `TaskService`. Ogiltig titel ger 400 och okänt id 404, båda med ett läsbart felmeddelande som visas på raden. |
+| FR-18 | MCP-servern har ett femte tool, `rename_task`, som byter titel på en Uppgift. |
+| FR-19 | Samtidiga ändringar: senast skrivna vinner. En Uppgiftshändelse skriver aldrig över text som användaren håller på att skriva. Tas Uppgiften bort under redigering stängs redigeringsläget. |
 
 ### Regler för Uppgiftslistan
 
@@ -63,8 +68,9 @@ En utvecklare som kör appen på sin egen maskin och har antingen en inloggad Cl
 | DR-2 | Titeln trimmas och måste sedan vara 1–200 tecken. Dubblettitlar är tillåtna. |
 | DR-3 | Att slutföra en redan slutförd Uppgift lyckas och ändrar ingenting, och ingen **Uppgiftshändelse** uppstår. |
 | DR-4 | En slutförd Uppgift kan inte öppnas igen. |
-| DR-5 | Att slutföra eller ta bort ett okänt id ger ett läsbart toolfel, aldrig en stacktrace. |
-| DR-6 | Varje lyckad ändring ger exakt en Uppgiftshändelse: `TaskCreated`, `TaskCompleted` eller `TaskDeleted`. |
+| DR-5 | Att byta titel på, slutföra eller ta bort ett okänt id ger ett läsbart toolfel, aldrig en stacktrace. |
+| DR-6 | Varje lyckad ändring ger exakt en Uppgiftshändelse: `TaskCreated`, `TaskRenamed`, `TaskCompleted` eller `TaskDeleted`. |
+| DR-7 | Titeln kan bytas oavsett Status. Den nya titeln valideras som i DR-2. En titel som är oförändrad efter trimning lyckas utan ändring och utan Uppgiftshändelse. |
 
 ## Icke-funktionella krav
 
@@ -79,6 +85,7 @@ En utvecklare som kör appen på sin egen maskin och har antingen en inloggad Cl
 | NFR-7 | Backend svarar aldrig själv på en Permission-förfrågan. |
 | NFR-8 | Automatiska tester anropar aldrig en riktig modell. |
 | NFR-9 | Varje tool-anrop loggas med toolnamn, chatt-id och duration. |
+| NFR-10 | Ändrande REST-anrop (FR-17) kräver `Origin` ur `poc.web.allowed-origins` (annars 403) och `Content-Type: application/json`, så att en annan webbplats i användarens webbläsare inte kan ändra listan (CSRF). |
 
 ## Acceptanskriterier
 
@@ -92,6 +99,7 @@ POC:n är klar när alla automatiska tester är gröna och följande demo funger
 - [ ] Starta en lång fråga och tryck Stopp. Turen avslutas med `cancelled`.
 - [ ] Stäng fliken. Inom 10 s finns ingen agentprocess kvar och arbetskatalogen är borta.
 - [ ] Anropa `/mcp` med MCP Inspector och utvecklartoken, och skapa en uppgift. Den visas direkt i alla öppna flikar.
+- [ ] Redigera i panelen: skapa en Uppgift, byt titel (Enter sparar, Esc avbryter), slutför och ta bort. Ändringarna syns i en andra flik, och agentens `list_tasks` ser dem.
 - [ ] Starta med profilen `gemini` och genomför steg 2.
 
 ## Risker och öppna frågor

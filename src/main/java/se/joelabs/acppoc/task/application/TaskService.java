@@ -30,6 +30,14 @@ public class TaskService {
         return TaskDto.from(task);
     }
 
+    /** Byter titel på en Uppgift. Oförändrad titel ger ingen händelse (DR-7). */
+    public synchronized TaskDto rename(long id, String title) {
+        var task = find(id);
+        task.rename(title, clock.instant());
+        publishEvents(task);
+        return TaskDto.from(task);
+    }
+
     /** Slutför en Uppgift. Redan slutförd ger ingen händelse (DR-3). */
     public synchronized TaskDto complete(long id) {
         var task = find(id);

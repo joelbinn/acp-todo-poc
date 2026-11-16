@@ -15,8 +15,8 @@ _Avoid_: TODO-lista, backlog
 **Status** (`OPEN`, `DONE`):
 Om en Uppgift är öppen eller slutförd. En slutförd Uppgift kan inte öppnas igen.
 
-**Uppgiftshändelse** (`TaskCreated`, `TaskCompleted`, `TaskDeleted`):
-Ett faktum om att en Uppgift har skapats, slutförts eller tagits bort.
+**Uppgiftshändelse** (`TaskCreated`, `TaskRenamed`, `TaskCompleted`, `TaskDeleted`):
+Ett faktum om att en Uppgift har skapats, bytt titel, slutförts eller tagits bort.
 _Avoid_: TaskChangedEvent, uppdatering
 
 ## Chatt och agent

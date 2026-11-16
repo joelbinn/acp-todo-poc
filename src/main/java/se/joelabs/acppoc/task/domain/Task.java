@@ -10,7 +10,7 @@ public final class Task {
     static final int MAX_TITLE_LENGTH = 200;
 
     private final long id;
-    private final String title;
+    private String title;
     private TaskStatus status;
     private final Instant createdAt;
     private final List<TaskChanged> pendingEvents = new ArrayList<>();
@@ -28,6 +28,20 @@ public final class Task {
         var task = new Task(id, title, TaskStatus.OPEN, now);
         task.pendingEvents.add(new TaskCreated(id, title, now));
         return task;
+    }
+
+    /**
+     * Byter titel oavsett Status (DR-7). Titeln valideras som vid skapande. Oförändrad titel efter trimning ger
+     * ingen händelse.
+     */
+    public synchronized void rename(String rawTitle, Instant now) {
+        var newTitle = validTitle(rawTitle);
+        if (newTitle.equals(title)) {
+            return;
+        }
+        var previous = title;
+        title = newTitle;
+        pendingEvents.add(new TaskRenamed(id, previous, newTitle, status, createdAt, now));
     }
 
     /**
@@ -66,7 +80,7 @@ public final class Task {
         return id;
     }
 
-    public String title() {
+    public synchronized String title() {
         return title;
     }
 

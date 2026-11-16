@@ -6,7 +6,7 @@ import java.time.Instant;
  * Uppgiftshändelse: ett faktum om att en Uppgift ändrats. Immutabel, namngiven i preteritum. Bär en kopia av
  * Uppgiftens tillstånd efter ändringen, så att lyssnare inte behöver slå upp den.
  */
-public sealed interface TaskChanged permits TaskCreated, TaskCompleted, TaskDeleted {
+public sealed interface TaskChanged permits TaskCreated, TaskRenamed, TaskCompleted, TaskDeleted {
 
     long taskId();
 

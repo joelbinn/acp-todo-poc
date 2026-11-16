@@ -72,7 +72,7 @@ Krav, domänregler och icke-funktionella krav med ID:n (FR-1–FR-15, DR-1–DR-
 
 ## MCP-server: tools i POC:n
 
-MCP-servern exponerar fyra tools mot en in-memory-uppgiftslista. De visar läsning, skrivning och en destruktiv operation, så att permission-flödet kan provas. Varje tool är en metod med `@McpTool` på en Spring-böna. Beskrivningarna skrivs för modellen, och kvaliteten på dem avgör om agenten väljer rätt tool.
+MCP-servern exponerar fem tools mot en in-memory-uppgiftslista. De visar läsning, skrivning och en destruktiv operation, så att permission-flödet kan provas. Varje tool är en metod med `@McpTool` på en Spring-böna. Beskrivningarna skrivs för modellen, och kvaliteten på dem avgör om agenten väljer rätt tool.
 
 | Tool | Parametrar | Returnerar | Typ |
 | --- | --- | --- | --- |
@@ -95,10 +95,11 @@ class TaskTools {
 }
 ```
 
-Domänregler (DR-1–DR-6 i [PRD](./PRD.md)):
+Domänregler (DR-1–DR-7 i [PRD](./PRD.md)):
 
 - Id:n är löpnummer.
 - Titeln trimmas och måste sedan vara 1–200 tecken. Dubblettitlar är tillåtna.
+- `rename_task` byter titel oavsett status. Oförändrad titel efter trim ger ingen händelse (DR-7).
 - `complete_task` på en slutförd uppgift lyckas utan händelse, och en slutförd uppgift kan inte öppnas igen.
 
 Krav på MCP-servern:
@@ -107,7 +108,7 @@ Krav på MCP-servern:
 - Servertyp `SYNC`. Tools är små och snabba.
 - Valideringsfel returneras som MCP-toolfel med ett läsbart meddelande, inte som exception-stacktrace.
 - Varje anrop loggas på INFO med toolnamn, chatt-id (från token, se Säkerhet) och duration.
-- Aggregatet `Task` skapar en domänhändelse vid varje lyckad ändring: `TaskCreated`, `TaskCompleted` eller `TaskDeleted`. De ingår i sealed interface `TaskChanged`. `TaskService` publicerar händelsen via porten `ITaskEventPublisher`, och `SpringTaskEventPublisher` mappar porten mot `ApplicationEventPublisher`. Repositoryt publicerar aldrig, och tools vet inget om WebSocket ([ADR-0004](./adr/0004-hexagonal-only-where-domain-logic-exists.md)).
+- Aggregatet `Task` skapar en domänhändelse vid varje lyckad ändring: `TaskCreated`, `TaskRenamed`, `TaskCompleted` eller `TaskDeleted`. De ingår i sealed interface `TaskChanged`. `TaskService` publicerar händelsen via porten `ITaskEventPublisher`, och `SpringTaskEventPublisher` mappar porten mot `ApplicationEventPublisher`. Repositoryt publicerar aldrig, och tools vet inget om WebSocket ([ADR-0004](./adr/0004-hexagonal-only-where-domain-logic-exists.md)).
 
 ## ACP-integration
 
@@ -193,7 +194,18 @@ Frontend är en enda sida (`index.html`, `app.js`, `app.css`) som pratar JSON ö
 - Inmatningsfält med Skicka och Stopp. Skicka är låst medan en tur pågår.
 - Modal för permission-förfrågningar med en knapp per alternativ.
 - Statusrad: ansluten, agent startar, redo, fel.
-- Uppgiftspanel bredvid chatten: titel och status per uppgift, öppna överst. En rad som just skapats eller ändrats markeras kort (ca 2 s), och en borttagen rad tonas ut.
+- Uppgiftspanel bredvid chatten: titel och status per uppgift, öppna överst. Panelen är redigerbar (FR-16): inmatningsfält för ny Uppgift, checkbox, penn-knapp och borttagningsknapp per rad. Den anropar REST (se nedan) och uppdateras bara av `task_changed`. En rad som just skapats eller ändrats markeras kort (ca 2 s), och en borttagen rad tonas ut.
+
+**REST för panelen (FR-17, NFR-10)**
+
+| Anrop | Body | Svar |
+| --- | --- | --- |
+| `POST /api/tasks` | `{"title"}` | 201 + Uppgiften |
+| `PATCH /api/tasks/{id}` | `{"title"}` | 200 + Uppgiften |
+| `POST /api/tasks/{id}/complete` | – | 200 + Uppgiften |
+| `DELETE /api/tasks/{id}` | – | 204 |
+
+Fel ger `{"error"}` med 400 (ogiltig titel), 403 (fel eller saknat `Origin`, eller annan `Content-Type`) eller 404 (okänt id). `RestOriginFilter` kontrollerar `Origin` mot `poc.web.allowed-origins` för alla ändrande anrop.
 
 **Klient → server**
 
@@ -217,7 +229,7 @@ Frontend är en enda sida (`index.html`, `app.js`, `app.css`) som pratar JSON ö
 | `turn_end` | `stopReason` | Svaret på `session/prompt` |
 | `error` | `message` | Undantag i backend eller agentprocess som dör |
 | `tasks_snapshot` | `tasks[]` med `id`, `title`, `status`, `createdAt` | Inte ACP: `TaskService`, skickas direkt när WebSocket öppnas |
-| `task_changed` | `change` (`CREATED`, `UPDATED`, `DELETED`), `task` | Inte ACP: `TaskCreated` → `CREATED`, `TaskCompleted` → `UPDATED`, `TaskDeleted` → `DELETED` |
+| `task_changed` | `change` (`CREATED`, `UPDATED`, `DELETED`), `task` | Inte ACP: `TaskCreated` → `CREATED`, `TaskRenamed` och `TaskCompleted` → `UPDATED`, `TaskDeleted` → `DELETED` |
 
 Övriga `session/update`-varianter loggas på DEBUG och ignoreras i POC:n. Det gäller t.ex. `available_commands_update` och `current_mode_update`.
 
